@@ -48,7 +48,7 @@ def image_loader(image_name, resize):
 
     return image.to(device, torch.float)
 
-indices = [6]#[0, 1, 2, 3]
+indices = [0, 1, 2, 3]
 image_list = []
 image_names = []
 for filename in glob.glob('images/images/Vincent_van_Gogh/*.jpg'): #assuming gif
