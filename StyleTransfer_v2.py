@@ -17,12 +17,16 @@ import Losses
 import VGG as net
 
 import os
+import time
+import numpy as np
+from itertools import combinations
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = "cpu"
 
 # desired size of the output image
-imsize = 128 if torch.cuda.is_available() else 128  # use small size if no gpu
+imsize = 56 if torch.cuda.is_available() else 56  # use small size if no gpu
 
 loader = transforms.Compose([
     transforms.Resize(imsize),  # scale imported image
@@ -48,49 +52,51 @@ def image_loader(image_name, resize):
 
     return image.to(device, torch.float)
 
+def getConfigsStyle(model, style_length):
+    convolutions = []
+    i = 0
+    for layer in model.children():
+        if isinstance(layer, nn.Conv2d):
+            i += 1
+            name = 'conv_{}'.format(i)
+            convolutions.append(name)
+
+    #content = "conv_4"
+    options = list(combinations(convolutions, style_length))
+    return  options
+
 indices = [0, 1, 2, 3]
 image_list = []
 image_names = []
+
 for filename in glob.glob('images/images/Vincent_van_Gogh/*.jpg'): #assuming gif
     image_names.append(os.path.basename(filename))
     im = image_loader(filename, True)
     image_list.append(im)
+    if len(image_list) == len(indices):
+        break
 content_img = image_loader("images/dancing.jpg", False)
 image_names = [image_names[i] for i in indices]
 image_list = [image_list[i] for i in indices]
-#image_list = [image_loader("images/picasso.jpg", False)]
-plt.figure()
 models = {'vgg11' : models.vgg11_bn(pretrained=True).features.to(device).eval(), 'vgg13': models.vgg13_bn(pretrained=True).features.to(device).eval(),
-          'vgg16' : models.vgg16_bn(pretrained=True).features.to(device).eval(), 'vgg19' : models.vgg19_bn(pretrained=True).features.to(device).eval()}
-for key, value in models.items():
+           'vgg16' : models.vgg16_bn(pretrained=True).features.to(device).eval(), 'vgg19' : models.vgg19_bn(pretrained=True).features.to(device).eval()}
+plotInfo = {name: [] for name in models.keys()}
+for name in models.keys():
+    try:
+        os.makedirs("images/output/{}".format(name))
+    except FileExistsError:
+        pass
+for modelName, cnn in models.items():
     imgnumber = 0
     index = -1
     for style_img in image_list:
+        start = time.time()
         index+=1
-        assert style_img.size() == content_img.size(), \
-            "we need to import style and content images of the same size"
+        assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
 
         plt.ion()
-
-        # Use pretrained model
-        #modelname = 'resnet152'
-        #cnn = models.resnet152(pretrained=True).to(device).eval()
-        #modelname = 'vgg19_bn'
-        cnn = value
-        modelname = key
-        #cnn = models.vgg19(pretrained=True).features.to(device).eval()
-        #modelname = 'vgg11_bn'
-        #cnn = models.vgg11_bn(pretrained=True).features.to(device).eval()
-        #modelname = 'densenet161'
-        #cnn = models.densenet161(pretrained=True).features.to(device).eval()
-
-        #Use custom model
-        #cfg = {
-        #    'A': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M']
-        #}
-
-        #cnn = net.VGG(net.VGG.make_layers(cfg['A']), 10)
-        #cnn.load_state_dict(torch.load('/media/lex/Evo/Semester2/DeepLearning/models/model2'))
+        content_layers_default = ['conv_4']
+        style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
         cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
         cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
@@ -107,9 +113,7 @@ for key, value in models.items():
                 # normalize img
                 return (img - self.mean) / self.std
 
-        # desired depth layers to compute style/content losses :
-        content_layers_default = ['conv_4']
-        style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
+
 
         def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
                                        style_img, content_img,
@@ -239,9 +243,11 @@ for key, value in models.items():
             # a last correction...
             input_img.data.clamp_(0, 1)
             print("run {}:".format(run))
-            return input_img, run[0]
-        output, runs = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
+            return input_img, run[0], totalLoss
+        output, runs, loss = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
                                     content_img, style_img, input_img)
+
+        plt.ioff()
 
         fig = plt.figure(figsize=(15,15))
         ax = fig.add_subplot(1, 3, 1)
@@ -253,12 +259,16 @@ for key, value in models.items():
         ax3 = fig.add_subplot(1, 3, 3, sharex=ax, sharey=ax)
         ax3.title.set_text('Output Image with runs {}'.format(runs))
         ax3.imshow(output.cpu()[0].permute(1, 2, 0).detach().numpy())
-        plt.show()
+        #plt.show()
 
         result = transforms.ToPILImage()(output.cpu()[0])
-        result.save('images/runs_%d_dancing_output_%s_%s'%(runs, modelname,image_names[imgnumber]))
-
+        elapsedSeconds = int(time.time() - start) / 10e9
+        plotInfo[modelName].append((image_names[imgnumber], loss, elapsedSeconds, runs))
+        result.save('images/output/{}/runs_{}_style_config_{}_dancing_output_{}'.format(modelName, runs, style_layers_default,image_names[imgnumber]))
+        plt.close(fig)
         # sphinx_gallery_thumbnail_number = 4
-        plt.ioff()
+
         imgnumber += 1
+
+np.save("info_dict.npy", plotInfo)
 plt.show()

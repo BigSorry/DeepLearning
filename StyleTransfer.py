@@ -57,7 +57,7 @@ image_list = [image_list[i] for i in indices]
 plt.figure()
 imshow(content_img, title='Content Image')
 for style_img in image_list:
-    assert style_img.size() == content_img.size(), \
+    assert style_img.size() == content_img.size(), /
         "we need to import style and content images of the same size"
 
 
@@ -66,13 +66,13 @@ for style_img in image_list:
     plt.figure()
     imshow(style_img, title='Style Image')
 
-    #cnn = models.vgg19(pretrained=True).features.to(device).eval()
-    cfg = {
-        'A': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M']
-    }
-
-    cnn = net.VGG(net.VGG.make_layers(cfg['A']), 10)
-    cnn.load_state_dict(torch.load('/media/lex/Evo/Semester2/DeepLearning/models/model2'))
+    cnn = models.vgg19(pretrained=True).features.to(device).eval()
+    # cfg = {
+    #     'A': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M']
+    # }
+    #
+    # cnn = net.VGG(net.VGG.make_layers(cfg['A']), 10)
+    # cnn.load_state_dict(torch.load('/media/lex/Evo/Semester2/DeepLearning/models/model2'))
     cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
     cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
@@ -112,8 +112,8 @@ for style_img in image_list:
         model = nn.Sequential(normalization)
 
         i = 0  # increment every time we see a conv
-        convolutionPart = list(cnn.children())[0]
-        for layer in convolutionPart:
+        #convolutionPart = list(cnn.children())[0]
+        for layer in cnn.children():
             if isinstance(layer, nn.Conv2d):
                 i += 1
                 name = 'conv_{}'.format(i)

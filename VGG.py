@@ -4,21 +4,18 @@ import torch.utils.model_zoo as model_zoo
 import math
 
 class VGG(nn.Module):
-
-    def __init__(self, features, num_classes=1000, init_weights=True):
+    def __init__(self, features, dimension, num_classes=1000, init_weights=True):
         super(VGG, self).__init__()
         self.features = features
-        vgg = 512 * 7 * 7
-        new = 4096
-        new2 = int(new/8)
+        nextDimension = int(dimension / 4)
         self.classifier = nn.Sequential(
-            nn.Linear(new, new2),
+            nn.Linear(dimension*7, nextDimension),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(new2, new2),
+            nn.Linear(nextDimension, nextDimension),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(new2, num_classes),
+            nn.Linear(nextDimension, num_classes),
         )
         if init_weights:
             self._initialize_weights()

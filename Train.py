@@ -9,10 +9,20 @@ import random
 def run():
 
     cfg = {
-    'A': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M'],
+        'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+        'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+        'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
+        'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+        'test': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 'M'],
+        'test2': [64]
     }
-
-    model = net.VGG(net.VGG.make_layers(cfg['A'], True), 10)
+    key = 'test2'
+    dimension = cfg[key][-1]
+    # Find the device available to use using torch library
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = net.VGG(net.VGG.make_layers(cfg[key], True), dimension, 10)
+    # Move model to the device specified above
+    model.to(device)
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
@@ -36,6 +46,9 @@ def run():
     # Training
     bestErrorRate = 1
     deterioration = 0
+    for i in iter(testloader):
+        t = i[0]
+        x=0
     batches = len(iter(testloader))
     validationSize = int(batches*0.5)
     while deterioration < 5:
