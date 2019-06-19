@@ -19,6 +19,7 @@ import VGG as net
 import os
 import time
 import numpy as np
+import pickle
 from itertools import combinations
 
 
@@ -263,12 +264,15 @@ for modelName, cnn in models.items():
 
         result = transforms.ToPILImage()(output.cpu()[0])
         elapsedSeconds = int(time.time() - start) / 10e9
-        plotInfo[modelName].append((image_names[imgnumber], loss, elapsedSeconds, runs))
+        plotInfo[modelName].append((image_names[imgnumber], loss.item(), elapsedSeconds, runs))
         result.save('images/output/{}/runs_{}_style_config_{}_dancing_output_{}'.format(modelName, runs, style_layers_default,image_names[imgnumber]))
         plt.close(fig)
         # sphinx_gallery_thumbnail_number = 4
 
         imgnumber += 1
 
-np.save("info_dict.npy", plotInfo)
+infoName = "info_dict.npy"
+with open(infoName, 'wb') as file:
+	pickle.dump(plotInfo, file, protocol = pickle.HIGHEST_PROTOCOL)
+	
 plt.show()

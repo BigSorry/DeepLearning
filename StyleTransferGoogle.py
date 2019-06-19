@@ -61,7 +61,6 @@ def getConfigsStyle(model, style_length):
             name = 'conv_{}'.format(i)
             convolutions.append(name)
 
-    #content = "conv_4"
     options = list(combinations(convolutions, style_length))
     return  options
 
@@ -94,7 +93,6 @@ for modelName, cnn in models.items():
         index+=1
         assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
 
-        plt.ion()
         content_layers_default = ['conv_4']
         style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
         cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
@@ -246,9 +244,7 @@ for modelName, cnn in models.items():
             return input_img, run[0], totalLoss
         output, runs, loss = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
                                     content_img, style_img, input_img)
-
-        plt.ioff()
-
+									
         fig = plt.figure(figsize=(15,15))
         ax = fig.add_subplot(1, 3, 1)
         ax.title.set_text('Style Image')
@@ -259,16 +255,14 @@ for modelName, cnn in models.items():
         ax3 = fig.add_subplot(1, 3, 3, sharex=ax, sharey=ax)
         ax3.title.set_text('Output Image with runs {}'.format(runs))
         ax3.imshow(output.cpu()[0].permute(1, 2, 0).detach().numpy())
-        #plt.show()
 
         result = transforms.ToPILImage()(output.cpu()[0])
         elapsedSeconds = int(time.time() - start) / 10e9
-        plotInfo[modelName].append((image_names[imgnumber], loss, elapsedSeconds, runs))
+        plotInfo[modelName].append((image_names[imgnumber], loss.item(), elapsedSeconds, runs))
         result.save('images/output/{}/runs_{}_style_config_{}_dancing_output_{}'.format(modelName, runs, style_layers_default,image_names[imgnumber]))
-        plt.close(fig)
-        # sphinx_gallery_thumbnail_number = 4
-
         imgnumber += 1
 
-np.save("info_dict.npy", plotInfo)
-plt.show()
+infoName = "info_dict.npy"
+with open(infoName, 'wb') as file:
+	pickle.dump(plotInfo, file, protocol = pickle.HIGHEST_PROTOCOL)
+	
