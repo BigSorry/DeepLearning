@@ -271,8 +271,14 @@ for modelName, cnn in models.items():
 
         imgnumber += 1
 
-infoName = "info_dict.npy"
+infoName = "info_dict.pickle"
 with open(infoName, 'wb') as file:
-	pickle.dump(plotInfo, file, protocol = pickle.HIGHEST_PROTOCOL)
-	
+	pickle.dump(plotInfo, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+b = {}
+with open(infoName, 'rb') as file:
+	b = pickle.load(file)
+
+for i in b.values():
+    print(i)
 plt.show()

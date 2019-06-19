@@ -18,7 +18,7 @@ import VGG as net
 
 import os
 import time
-import numpy as np
+import pickle
 from itertools import combinations
 
 
@@ -262,7 +262,7 @@ for modelName, cnn in models.items():
         result.save('images/output/{}/runs_{}_style_config_{}_dancing_output_{}'.format(modelName, runs, style_layers_default,image_names[imgnumber]))
         imgnumber += 1
 
-infoName = "info_dict.npy"
+infoName = "info_dict.pickle"
 with open(infoName, 'wb') as file:
 	pickle.dump(plotInfo, file, protocol = pickle.HIGHEST_PROTOCOL)
 	
