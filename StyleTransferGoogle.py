@@ -26,7 +26,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = "cpu"
 
 # desired size of the output image
-imsize = 1024 if torch.cuda.is_available() else 1024# use small size if no gpu
+imsize = 56 if torch.cuda.is_available() else 56# use small size if no gpu
 
 loader = transforms.Compose([
     transforms.Resize(imsize),  # scale imported image
@@ -64,35 +64,43 @@ def getConfigsStyle(model, style_length):
     options = list(combinations(convolutions, style_length))
     return  options
 
-indices = [0, 1, 2, 3]
 image_list = []
 image_names = []
+imagePerMap = 1
+for map in glob.glob('images/images/*'):
+    count = 0
+    for image in glob.glob("{}/*.jpg".format(map)):
+        image_names.append(os.path.basename(image))
+        im = image_loader(image, True)
+        image_list.append(im)
+        count+=1
+        if count == imagePerMap:
+            break
 
-for filename in glob.glob('images/images/Vincent_van_Gogh/*.jpg'): #assuming gif
-    image_names.append(os.path.basename(filename))
-    im = image_loader(filename, True)
-    image_list.append(im)
-    if len(image_list) == len(indices):
-        break
-content_img = image_loader("images/dancing.jpg", False)
-image_names = [image_names[i] for i in indices]
-image_list = [image_list[i] for i in indices]
+content_img = image_loader("images/dancing.jpg", True)
+# image_names = [image_names[i] for i in indices]
+# image_list = [image_list[i] for i in indices]
 models = {'vgg11' : models.vgg11_bn(pretrained=True).features.to(device).eval(), 'vgg13': models.vgg13_bn(pretrained=True).features.to(device).eval(),
            'vgg16' : models.vgg16_bn(pretrained=True).features.to(device).eval(), 'vgg19' : models.vgg19_bn(pretrained=True).features.to(device).eval()}
 plotInfo = {name: [] for name in models.keys()}
-for name in models.keys():
-    try:
-        os.makedirs("images/output/{}".format(name))
-    except FileExistsError:
-        pass
-for modelName, cnn in models.items():
-    imgnumber = 0
-    index = -1
-    for style_img in image_list:
+# for name in models.keys():
+#     try:
+#         os.makedirs("images/output/{}".format(name))
+#     except FileExistsError:
+#         pass
+imgnumber = 0
+for style_img in image_list:
+    assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
+    fig = plt.figure(figsize=(15, 15))
+    ax = fig.add_subplot(1, len(models)+2, 2)
+    ax.title.set_text('Style Image')
+    ax.imshow(style_img.cpu()[0].permute(1, 2, 0))
+    ax2 = fig.add_subplot(1, len(models)+2, 1, sharex=ax, sharey=ax)
+    ax2.title.set_text('Content Image')
+    ax2.imshow(content_img.cpu()[0].permute(1, 2, 0))
+    indexSubPlot = 3
+    for modelName, cnn in models.items():
         start = time.time()
-        index+=1
-        assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
-
         content_layers_default = ['conv_4']
         style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
         cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
@@ -197,7 +205,6 @@ for modelName, cnn in models.items():
                                style_weight=1000000, content_weight=1):
             """Run the style transfer."""
             print('Building the style transfer model..')
-            print("Index is {}".format(index))
             model, style_losses, content_losses = get_style_model_and_losses(cnn,
                 normalization_mean, normalization_std, style_img, content_img)
             optimizer = get_input_optimizer(input_img)
@@ -245,22 +252,19 @@ for modelName, cnn in models.items():
         output, runs, loss = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
                                     content_img, style_img, input_img)
 									
-        fig = plt.figure(figsize=(15,15))
-        ax = fig.add_subplot(1, 3, 1)
-        ax.title.set_text('Style Image')
-        ax.imshow(style_img.cpu()[0].permute(1, 2, 0))
-        ax2 = fig.add_subplot(1, 3, 2, sharex=ax, sharey=ax)
-        ax2.title.set_text('Content Image')
-        ax2.imshow(content_img.cpu()[0].permute(1, 2, 0))
-        ax3 = fig.add_subplot(1, 3, 3, sharex=ax, sharey=ax)
-        ax3.title.set_text('Output Image with runs {}'.format(runs))
+
+
+        ax3 = fig.add_subplot(1, len(models)+2, indexSubPlot, sharex=ax, sharey=ax)
+        ax3.title.set_text('Output Image with architecture {}'.format(modelName))
         ax3.imshow(output.cpu()[0].permute(1, 2, 0).detach().numpy())
+        indexSubPlot+=1
 
         result = transforms.ToPILImage()(output.cpu()[0])
         elapsedSeconds = int(time.time() - start) / 10e9
         plotInfo[modelName].append((image_names[imgnumber], loss.item(), elapsedSeconds, runs))
-        result.save('images/output/{}/runs_{}_style_config_{}_dancing_output_{}'.format(modelName, runs, style_layers_default,image_names[imgnumber]))
-        imgnumber += 1
+
+    fig.savefig('images/output/art{}'.format(image_names[imgnumber]))
+    imgnumber += 1
 
 infoName = "info_dict.pickle"
 with open(infoName, 'wb') as file:
