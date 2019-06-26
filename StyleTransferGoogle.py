@@ -67,7 +67,7 @@ def getConfigsStyle(model, style_length):
 image_list = []
 image_names = []
 imagePerMap = 1
-for map in glob.glob('images/images/*'):
+for map in glob.glob('art/*'):
     count = 0
     for image in glob.glob("{}/*.jpg".format(map)):
         image_names.append(os.path.basename(image))
