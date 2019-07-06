@@ -3,8 +3,8 @@
 % Assumed is that the drfi_matlab library is installed as published on 
 % https://github.com/playerkk/drfi_matlab (retrieved 17 June 2019)
 
-path = 'D:\CS\CS4180 Deep Learning\Project\images\';
-files = dir(fullfile(path,'\*.jpg'));
+path = 'D:/CS/CS4180 Deep Learning/Project/images/';
+files = dir(fullfile(path,'/*.jpg'));
 addpath(genpath('.'));
 para = makeDefaultParameters;
 

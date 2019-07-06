@@ -20,6 +20,7 @@ import os
 import time
 import pickle
 from itertools import combinations
+import numpy as np
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -82,16 +83,16 @@ content_img = image_loader("images/dancing.jpg", True)
 # image_list = [image_list[i] for i in indices]
 models = {'vgg11' : models.vgg11_bn(pretrained=True).features.to(device).eval(), 'vgg13': models.vgg13_bn(pretrained=True).features.to(device).eval(),
            'vgg16' : models.vgg16_bn(pretrained=True).features.to(device).eval(), 'vgg19' : models.vgg19_bn(pretrained=True).features.to(device).eval()}
-plotInfo = {name: [] for name in models.keys()}
+plotInfo = {name: {} for name in image_names}
 # for name in models.keys():
 #     try:
 #         os.makedirs("images/output/{}".format(name))
 #     except FileExistsError:
 #         pass
 imgnumber = 0
-for style_img in image_list:
+for style_img in image_list[:1]:
     assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure()
     ax = fig.add_subplot(1, len(models)+2, 2)
     ax.title.set_text('Style Image')
     ax.imshow(style_img.cpu()[0].permute(1, 2, 0))
@@ -137,8 +138,7 @@ for style_img in image_list:
 
             # assuming that cnn is a nn.Sequential, so we make a new nn.Sequential
             # to put in modules that are supposed to be activated sequentially
-            #model = nn.Sequential(normalization)
-            model = nn.Sequential()
+            model = nn.Sequential(normalization)
             i = 0  # increment every time we see a conv
             convolutionPart = cnn.children()
             #convolutionPart = list(cnn.children())[0]
@@ -201,18 +201,21 @@ for style_img in image_list:
             return optimizer
 
         def run_style_transfer(cnn, normalization_mean, normalization_std,
-                               content_img, style_img, input_img, num_steps=300,
+                               content_img, style_img, input_img, num_steps=100,
                                style_weight=1000000, content_weight=1):
             """Run the style transfer."""
             print('Building the style transfer model..')
             model, style_losses, content_losses = get_style_model_and_losses(cnn,
                 normalization_mean, normalization_std, style_img, content_img)
             optimizer = get_input_optimizer(input_img)
-
             print('Optimizing..')
             run = [0]
+
             totalLoss = 2**32-1
-            while totalLoss >= 0.2 and run[0] <= num_steps:
+            rows = int(num_steps / 10)
+            lossInfo = np.ones((rows + 1, 2))
+            index = [0]
+            while run[0] <= num_steps:
 
                 def closure():
                     # correct the values of updated input image
@@ -234,12 +237,16 @@ for style_img in image_list:
                     loss = style_score + content_score
                     loss.backward()
 
-                    run[0] += 1
-                    if run[0] % 50 == 0:
+                    if run[0] % rows == 0:
+                        # Somehow runs get higher than num_steps
+                        if index[0] < lossInfo.shape[0]:
+                            lossInfo[index[0], :] = [run[0], loss.item()]
+                        index[0] += 1
                         print("run {}:".format(run))
                         print('Style Loss : {:4f} Content Loss: {:4f}'.format(
                             style_score, content_score))
                         print()
+                    run[0] += 1
 
                     return style_score + content_score
 
@@ -248,8 +255,8 @@ for style_img in image_list:
             # a last correction...
             input_img.data.clamp_(0, 1)
             print("run {}:".format(run))
-            return input_img, run[0], totalLoss
-        output, runs, loss = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
+            return input_img, run[0], totalLoss, lossInfo
+        output, runs, loss, lossInfo = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
                                     content_img, style_img, input_img)
 									
 
@@ -261,7 +268,7 @@ for style_img in image_list:
 
         result = transforms.ToPILImage()(output.cpu()[0])
         elapsedSeconds = int(time.time() - start) / 10e9
-        plotInfo[modelName].append((image_names[imgnumber], loss.item(), elapsedSeconds, runs))
+        plotInfo[image_names[imgnumber]][modelName] = lossInfo
 
     fig.savefig('images/output/art{}'.format(image_names[imgnumber]))
     imgnumber += 1
