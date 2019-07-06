@@ -2,7 +2,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 
-path = "D:/Semester2/Deep learning/DeepLearning/info_dict.pickle"
+path = "info.pkl"
 with open(path, 'rb') as file:
     data = pickle.load(file)
 

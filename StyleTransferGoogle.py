@@ -27,7 +27,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = "cpu"
 
 # desired size of the output image
-imsize = 56 if torch.cuda.is_available() else 56# use small size if no gpu
+imsize = 28 if torch.cuda.is_available() else 28# use small size if no gpu
 
 loader = transforms.Compose([
     transforms.Resize(imsize),  # scale imported image
@@ -79,27 +79,23 @@ for map in glob.glob('art/*'):
             break
 
 content_img = image_loader("images/dancing.jpg", True)
-# image_names = [image_names[i] for i in indices]
-# image_list = [image_list[i] for i in indices]
 models = {'vgg11' : models.vgg11_bn(pretrained=True).features.to(device).eval(), 'vgg13': models.vgg13_bn(pretrained=True).features.to(device).eval(),
            'vgg16' : models.vgg16_bn(pretrained=True).features.to(device).eval(), 'vgg19' : models.vgg19_bn(pretrained=True).features.to(device).eval()}
 plotInfo = {name: {} for name in image_names}
-# for name in models.keys():
-#     try:
-#         os.makedirs("images/output/{}".format(name))
-#     except FileExistsError:
-#         pass
+
 imgnumber = 0
-for style_img in image_list[:1]:
+for style_img in image_list:
     assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
     fig = plt.figure()
-    ax = fig.add_subplot(1, len(models)+2, 2)
+    ax = fig.add_subplot(2, len(models), 3)
     ax.title.set_text('Style Image')
-    ax.imshow(style_img.cpu()[0].permute(1, 2, 0))
-    ax2 = fig.add_subplot(1, len(models)+2, 1, sharex=ax, sharey=ax)
+    ax.axis('off')
+    ax.imshow(style_img.cpu()[0].permute(1, 2, 0), interpolation='nearest', aspect='auto')
+    ax2 = fig.add_subplot(2, len(models)+2, 2)
     ax2.title.set_text('Content Image')
-    ax2.imshow(content_img.cpu()[0].permute(1, 2, 0))
-    indexSubPlot = 3
+    ax2.axis('off')
+    ax2.imshow(content_img.cpu()[0].permute(1, 2, 0), interpolation='nearest', aspect='auto')
+    indexSubPlot = 8
     for modelName, cnn in models.items():
         start = time.time()
         content_layers_default = ['conv_4']
@@ -201,14 +197,13 @@ for style_img in image_list[:1]:
             return optimizer
 
         def run_style_transfer(cnn, normalization_mean, normalization_std,
-                               content_img, style_img, input_img, num_steps=100,
+                               content_img, style_img, input_img, num_steps=300,
                                style_weight=1000000, content_weight=1):
             """Run the style transfer."""
             print('Building the style transfer model..')
             model, style_losses, content_losses = get_style_model_and_losses(cnn,
                 normalization_mean, normalization_std, style_img, content_img)
             optimizer = get_input_optimizer(input_img)
-            print('Optimizing..')
             run = [0]
 
             totalLoss = 2**32-1
@@ -242,10 +237,10 @@ for style_img in image_list[:1]:
                         if index[0] < lossInfo.shape[0]:
                             lossInfo[index[0], :] = [run[0], loss.item()]
                         index[0] += 1
-                        print("run {}:".format(run))
-                        print('Style Loss : {:4f} Content Loss: {:4f}'.format(
-                            style_score, content_score))
-                        print()
+                        # print("run {}:".format(run))
+                        # print('Style Loss : {:4f} Content Loss: {:4f}'.format(
+                        #     style_score, content_score))
+                        # print()
                     run[0] += 1
 
                     return style_score + content_score
@@ -261,16 +256,17 @@ for style_img in image_list[:1]:
 									
 
 
-        ax3 = fig.add_subplot(1, len(models)+2, indexSubPlot, sharex=ax, sharey=ax)
-        ax3.title.set_text('Output Image with architecture {}'.format(modelName))
-        ax3.imshow(output.cpu()[0].permute(1, 2, 0).detach().numpy())
+        ax3 = fig.add_subplot(2, len(models)+2, indexSubPlot)
+        ax3.title.set_text('{}'.format(modelName))
+        ax3.axis("off")
+        ax3.imshow(output.cpu()[0].permute(1, 2, 0).detach().numpy(), interpolation='nearest', aspect='auto')
         indexSubPlot+=1
 
         result = transforms.ToPILImage()(output.cpu()[0])
         elapsedSeconds = int(time.time() - start) / 10e9
         plotInfo[image_names[imgnumber]][modelName] = lossInfo
 
-    fig.savefig('images/output/art{}'.format(image_names[imgnumber]))
+    fig.savefig('images/output/{}'.format(image_names[imgnumber]))
     imgnumber += 1
 
 infoName = "info_dict.pickle"
