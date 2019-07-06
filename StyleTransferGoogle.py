@@ -207,8 +207,7 @@ for style_img in image_list:
             run = [0]
 
             totalLoss = 2**32-1
-            rows = int(num_steps / 10)
-            lossInfo = np.ones((rows + 1, 2))
+            lossInfo = np.ones((num_steps, 2))
             index = [0]
             while run[0] <= num_steps:
 
@@ -231,16 +230,16 @@ for style_img in image_list:
 
                     loss = style_score + content_score
                     loss.backward()
-
-                    if run[0] % rows == 0:
-                        # Somehow runs get higher than num_steps
-                        if index[0] < lossInfo.shape[0]:
-                            lossInfo[index[0], :] = [run[0], loss.item()]
-                        index[0] += 1
-                        # print("run {}:".format(run))
-                        # print('Style Loss : {:4f} Content Loss: {:4f}'.format(
-                        #     style_score, content_score))
-                        # print()
+                    if run[0] < lossInfo.shape[0]:
+                        lossInfo[run[0], :] = [run[0], loss.item()]
+                    # if run[0] % rows == 0:
+                    #     # Somehow runs get higher than num_steps
+                    #
+                    #     index[0] += 1
+                    #     # print("run {}:".format(run))
+                    #     # print('Style Loss : {:4f} Content Loss: {:4f}'.format(
+                    #     #     style_score, content_score))
+                    #     # print()
                     run[0] += 1
 
                     return style_score + content_score
@@ -269,7 +268,7 @@ for style_img in image_list:
     fig.savefig('images/output/{}'.format(image_names[imgnumber]))
     imgnumber += 1
 
-infoName = "info_dict.pickle"
+infoName = "info_dict"
 with open(infoName, 'wb') as file:
 	pickle.dump(plotInfo, file, protocol = pickle.HIGHEST_PROTOCOL)
 	
