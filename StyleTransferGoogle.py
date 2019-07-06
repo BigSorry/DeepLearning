@@ -262,7 +262,7 @@ for style_img in image_list:
         indexSubPlot+=1
 
         result = transforms.ToPILImage()(output.cpu()[0])
-        elapsedSeconds = int(time.time() - start) / 10e9
+        elapsedSeconds = int(time.time() - start)
         plotInfo[image_names[imgnumber]][modelName] = lossInfo
 
     fig.savefig('images/output/{}'.format(image_names[imgnumber]))
