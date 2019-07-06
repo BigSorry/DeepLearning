@@ -27,7 +27,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = "cpu"
 
 # desired size of the output image
-imsize = 28 if torch.cuda.is_available() else 28# use small size if no gpu
+imsize = 512 if torch.cuda.is_available() else 512# use small size if no gpu
 
 loader = transforms.Compose([
     transforms.Resize(imsize),  # scale imported image
@@ -78,24 +78,24 @@ for map in glob.glob('art/*'):
         if count == imagePerMap:
             break
 
-content_img = image_loader("images/dancing.jpg", True)
+content_img = image_loader("content/earth.jpg", True)
 models = {'vgg11' : models.vgg11_bn(pretrained=True).features.to(device).eval(), 'vgg13': models.vgg13_bn(pretrained=True).features.to(device).eval(),
            'vgg16' : models.vgg16_bn(pretrained=True).features.to(device).eval(), 'vgg19' : models.vgg19_bn(pretrained=True).features.to(device).eval()}
 plotInfo = {name: {} for name in image_names}
 
 imgnumber = 0
-for style_img in image_list:
+for style_img in image_list[25:]:
     assert style_img.size() == content_img.size(), "we need to import style and content images of the same size"
     fig = plt.figure()
-    ax = fig.add_subplot(2, len(models), 3)
+    ax = fig.add_subplot(3, 2, 2)
     ax.title.set_text('Style Image')
     ax.axis('off')
     ax.imshow(style_img.cpu()[0].permute(1, 2, 0), interpolation='nearest', aspect='auto')
-    ax2 = fig.add_subplot(2, len(models)+2, 2)
+    ax2 = fig.add_subplot(3, 2, 1)
     ax2.title.set_text('Content Image')
     ax2.axis('off')
     ax2.imshow(content_img.cpu()[0].permute(1, 2, 0), interpolation='nearest', aspect='auto')
-    indexSubPlot = 8
+    indexSubPlot = 3
     for modelName, cnn in models.items():
         start = time.time()
         content_layers_default = ['conv_4']
@@ -209,7 +209,7 @@ for style_img in image_list:
             totalLoss = 2**32-1
             lossInfo = np.ones((num_steps, 2))
             index = [0]
-            while run[0] <= num_steps:
+            while totalLoss > 10e-3 and run[0] <= num_steps:
 
                 def closure():
                     # correct the values of updated input image
@@ -255,7 +255,7 @@ for style_img in image_list:
 									
 
 
-        ax3 = fig.add_subplot(2, len(models)+2, indexSubPlot)
+        ax3 = fig.add_subplot(3, 2, indexSubPlot)
         ax3.title.set_text('{}'.format(modelName))
         ax3.axis("off")
         ax3.imshow(output.cpu()[0].permute(1, 2, 0).detach().numpy(), interpolation='nearest', aspect='auto')
@@ -263,9 +263,10 @@ for style_img in image_list:
 
         result = transforms.ToPILImage()(output.cpu()[0])
         elapsedSeconds = int(time.time() - start)
-        plotInfo[image_names[imgnumber]][modelName] = lossInfo
-
-    fig.savefig('images/output/{}'.format(image_names[imgnumber]))
+        plotInfo[image_names[imgnumber]][modelName] = (lossInfo, elapsedSeconds)
+        print(loss)
+        
+    fig.savefig('output/{}'.format(image_names[imgnumber]))
     imgnumber += 1
 
 infoName = "info_dict"
