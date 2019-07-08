@@ -4,7 +4,7 @@
 2. Run plot,py to get the corresponding total loss plots.
 
 
-3. Less images go to line 210; slice image_list[:1] (first only example)
-4. Different models con be configured at line 206 models = {}
-5. Imsize is at line 183
+* Less images go to line 210; slice image_list[:1] (first only example)
+* Different models con be configured at line 206 models = {}
+* Imsize is at line 183
 
